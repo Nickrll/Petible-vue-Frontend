@@ -1,0 +1,56 @@
+image: node:latest
+
+cache:
+  paths:
+    - node_modules/
+
+stages:
+  - setup
+  - test-unit
+  - test-e2e
+  - build
+  - deploy
+  
+setup:
+  stage: setup
+  script:
+    - npm ci
+    
+test-unit:
+  stage: test-unit
+  script:
+    - npm run test:unit
+    
+e2e_tests:
+  only:
+    - master
+  image: circleci/node:latest-browsers
+  stage: test-e2e
+  script:
+    - npm run test:e2e
+    
+build:
+  stage: build
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - dist
+  only:
+    - master
+  
+deploy:
+  stage: deploy
+  environment: master
+  only:
+    - master
+  script:
+    - npm install -g firebase-tools
+    #- npm install -g bower
+    - npm install
+    - npm run build
+    #- bower install --allow-root
+    - firebase use --token $FIREBASE_TOKEN default
+    - firebase deploy -m "Pipeline $CI_PIPELINE_ID, build $CI_BUILD_ID" --non-interactive --token $FIREBASE_TOKEN
+  dependencies:
+    - build
